@@ -1,0 +1,7 @@
+config/lib/dbConnect/dbConfig.json
+
+data/
+
+reference/*
+!reference/__init__.py
+

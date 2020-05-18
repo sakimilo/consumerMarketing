@@ -1,0 +1,51 @@
+#!/bin/bash
+
+string_to_insert=$(cat <<-END
+on_rtd = os.environ.get('READTHEDOCS', None) == 'True'
+
+if on_rtd:
+    html_theme = 'default'
+else:  # only import and set the theme if we're building docs locally
+    import sphinx_rtd_theme
+    html_theme = 'sphinx_rtd_theme'
+    html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
+END
+)
+export string_to_insert
+
+echo 'Generating a fresh copy of the docs ...'
+rm -rf ../docs
+mkdir ../docs
+sphinx-apidoc -F -o ../docs .
+echo "autoclass_content = 'both'" >> ../docs/conf.py
+sed "s/^extensions.*/& 'sphinx.ext.napoleon',/"        ../docs/conf.py   > ../docs/conf2.py
+sed "s/^# import/import/"                              ../docs/conf2.py  > ../docs/conf3.py
+sed "s/^# sys.path./sys.path./"                        ../docs/conf3.py  > ../docs/conf4.py
+sed "s|^html_theme =|#html_theme =|"  				   ../docs/conf4.py  > ../docs/conf5.py
+echo '# napoleon extensions over here '                >> ../docs/conf1.py
+echo '# ------------------------------'                >> ../docs/conf1.py
+echo 'napoleon_google_docstring = True'                >> ../docs/conf1.py
+echo 'napoleon_numpy_docstring = True'                 >> ../docs/conf1.py
+echo 'napoleon_include_init_with_doc = False'          >> ../docs/conf1.py
+echo 'napoleon_include_private_with_doc = False'       >> ../docs/conf1.py
+echo 'napoleon_include_special_with_doc = True'        >> ../docs/conf1.py
+echo 'napoleon_use_admonition_for_examples = False'    >> ../docs/conf1.py
+echo 'napoleon_use_admonition_for_notes = False'       >> ../docs/conf1.py
+echo 'napoleon_use_admonition_for_references = False'  >> ../docs/conf1.py
+echo 'napoleon_use_ivar = False'                       >> ../docs/conf1.py
+echo 'napoleon_use_param = True'                       >> ../docs/conf1.py
+echo 'napoleon_use_rtype = True'                       >> ../docs/conf1.py
+echo ''                                                >> ../docs/conf1.py
+echo ''                                                >> ../docs/conf1.py
+echo "$string_to_insert" 							   >> ../docs/conf1.py
+cat ../docs/conf5.py ../docs/conf1.py > ../docs/conf6.py
+rm ../docs/conf.py ../docs/conf1.py ../docs/conf2.py ../docs/conf3.py ../docs/conf4.py ../docs/conf5.py
+mv ../docs/conf6.py ../docs/conf.py
+cat ../docs/conf.py > logs.txt
+echo 'Generating the doc tree ....'
+echo '----------------------------'
+sphinx-build -b html -aE -d ../docs/doctrees -c ../docs ../docs ../docs/_build/html
+cp -R ../docs/_build/html ../docs1
+rm -rf ../docs
+mv ../docs1 ../docs
+touch ../docs/.nojekyll

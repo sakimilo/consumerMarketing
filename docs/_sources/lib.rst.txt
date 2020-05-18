@@ -1,0 +1,29 @@
+lib package
+===========
+
+Subpackages
+-----------
+
+.. toctree::
+
+   lib.argParsers
+
+Submodules
+----------
+
+lib.dbConnect module
+--------------------
+
+.. automodule:: lib.dbConnect
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+
+Module contents
+---------------
+
+.. automodule:: lib
+   :members:
+   :undoc-members:
+   :show-inheritance:

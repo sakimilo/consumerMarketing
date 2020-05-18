@@ -1,0 +1,485 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>lib.dbConnect &mdash; src  documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="../../_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script type="text/javascript" src="../../_static/jquery.js"></script>
+        <script type="text/javascript" src="../../_static/underscore.js"></script>
+        <script type="text/javascript" src="../../_static/doctools.js"></script>
+        <script type="text/javascript" src="../../_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> src
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../lib.html">lib package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../logs.html">logs package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main.html">main module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">modules package</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">src</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+      <li>lib.dbConnect</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for lib.dbConnect</h1><div class="highlight"><pre>
+<span></span><span class="kn">import</span> <span class="nn">psycopg2</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">jsonref</span>
+<span class="kn">from</span> <span class="nn">tqdm</span> <span class="k">import</span> <span class="n">tqdm</span>
+
+<span class="kn">from</span> <span class="nn">logs</span> <span class="k">import</span> <span class="n">logDecorator</span> <span class="k">as</span> <span class="n">lD</span> 
+<span class="kn">from</span> <span class="nn">typing</span> <span class="k">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span>
+
+<span class="n">config</span>   <span class="o">=</span> <span class="n">jsonref</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="s1">&#39;../config/config.json&#39;</span><span class="p">))</span>
+<span class="n">logBase</span>  <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;logging&#39;</span><span class="p">][</span><span class="s1">&#39;logBase&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39;.lib.dbConnect&#39;</span>
+
+<div class="viewcode-block" id="PostgresDB"><a class="viewcode-back" href="../../lib.html#lib.dbConnect.PostgresDB">[docs]</a><span class="k">class</span> <span class="nc">PostgresDB</span><span class="p">:</span>
+
+    <span class="nd">@lD</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">logBase</span> <span class="o">+</span> <span class="s1">&#39;.PostgresDB.__init__&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">__init__</span><span class="p">(</span><span class="n">logger</span><span class="p">,</span> <span class="bp">self</span><span class="p">,</span> <span class="n">configFile</span><span class="p">:</span> <span class="nb">str</span> <span class="o">=</span><span class="s1">&#39;../config/lib/dbConnect/dbConfig.json&#39;</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Connect to the databse</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">dbConfig</span>     <span class="o">=</span> <span class="n">jsonref</span><span class="o">.</span><span class="n">load</span><span class="p">(</span> <span class="nb">open</span><span class="p">(</span><span class="n">configFile</span><span class="p">,</span> <span class="s1">&#39;r&#39;</span><span class="p">)</span> <span class="p">)</span>
+            <span class="n">connInfo</span>     <span class="o">=</span> <span class="n">dbConfig</span><span class="p">[</span><span class="s1">&#39;dbLogin&#39;</span><span class="p">][</span><span class="s1">&#39;connInfo&#39;</span><span class="p">]</span>
+            <span class="n">connStr</span>      <span class="o">=</span> <span class="s2">&quot;host=</span><span class="si">{host}</span><span class="s2"> user=</span><span class="si">{user}</span><span class="s2"> dbname=</span><span class="si">{dbname}</span><span class="s2"> password=</span><span class="si">{password}</span><span class="s2"> port=</span><span class="si">{port}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span> <span class="o">**</span><span class="n">connInfo</span> <span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">conn</span>    <span class="o">=</span> <span class="n">psycopg2</span><span class="o">.</span><span class="n">connect</span><span class="p">(</span> <span class="n">connStr</span> <span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s1">&#39;Unable to initialize PostgresDB </span><span class="se">\n</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)))</span>
+
+<div class="viewcode-block" id="PostgresDB.disconnect"><a class="viewcode-back" href="../../lib.html#lib.dbConnect.PostgresDB.disconnect">[docs]</a>    <span class="nd">@lD</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">logBase</span> <span class="o">+</span> <span class="s1">&#39;.PostgresDB.disconnect&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">disconnect</span><span class="p">(</span><span class="n">logger</span><span class="p">,</span> <span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">        Disconnect from the database. If this fails, for instance</span>
+<span class="sd">        if the connection instance doesn&#39;t exist, ignore the exception.</span>
+<span class="sd">        &quot;&quot;&quot;</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">cursor</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">close</span><span class="p">()</span>
+        
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s1">&#39;Encounter disconnection error: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)))</span></div>
+
+<div class="viewcode-block" id="PostgresDB.exec_sql"><a class="viewcode-back" href="../../lib.html#lib.dbConnect.PostgresDB.exec_sql">[docs]</a>    <span class="nd">@lD</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">logBase</span> <span class="o">+</span> <span class="s1">&#39;.PostgresDB.exec_sql&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">exec_sql</span><span class="p">(</span><span class="n">logger</span><span class="p">,</span> <span class="bp">self</span><span class="p">,</span> <span class="n">sqlString</span><span class="p">,</span> <span class="n">tuple_values</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">]</span> <span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Provide sqlString to perform changes onto postgres DataBase</span>
+<span class="sd">        </span>
+<span class="sd">        Decorators:</span>
+<span class="sd">            lD.log</span>
+<span class="sd">        </span>
+<span class="sd">        Arguments:</span>
+<span class="sd">            logger : {logging.Logger} :</span>
+<span class="sd">                the logger function</span>
+<span class="sd">            self : {instance of dbConnect} :</span>
+<span class="sd">                current instance</span>
+<span class="sd">            sqlString : {string} :</span>
+<span class="sd">                string of SQL statement to be run</span>
+<span class="sd">            tuple_values : {tuple} :</span>
+<span class="sd">                tuple of input values SQL statement require</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="k">if</span> <span class="n">tuple_values</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">sqlString</span><span class="p">)</span>
+            <span class="k">else</span><span class="p">:</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">sqlString</span><span class="p">,</span> <span class="n">tuple_values</span><span class="p">)</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s1">&#39;Unable to execute sql: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)))</span></div>
+
+<div class="viewcode-block" id="PostgresDB.commit_sql"><a class="viewcode-back" href="../../lib.html#lib.dbConnect.PostgresDB.commit_sql">[docs]</a>    <span class="nd">@lD</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">logBase</span> <span class="o">+</span> <span class="s1">&#39;.PostgresDB.commit_sql&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">commit_sql</span><span class="p">(</span><span class="n">logger</span><span class="p">,</span> <span class="bp">self</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Commit changes applied on postgres DataBase</span>
+<span class="sd">        </span>
+<span class="sd">        Decorators:</span>
+<span class="sd">            lD.log</span>
+<span class="sd">        </span>
+<span class="sd">        Arguments:</span>
+<span class="sd">            logger : {logging.Logger} :</span>
+<span class="sd">                the logger function</span>
+<span class="sd">            self : {instance of dbConnect} :</span>
+<span class="sd">                current instance</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+            
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s1">&#39;Unable to commit sql: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)))</span></div>
+
+<div class="viewcode-block" id="PostgresDB.query"><a class="viewcode-back" href="../../lib.html#lib.dbConnect.PostgresDB.query">[docs]</a>    <span class="nd">@lD</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">logBase</span> <span class="o">+</span> <span class="s1">&#39;.PostgresDB.query&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">query</span><span class="p">(</span><span class="n">logger</span><span class="p">,</span> <span class="bp">self</span><span class="p">,</span> <span class="n">sqlString</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">values</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">]</span> <span class="o">=</span><span class="kc">None</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+        
+        <span class="k">try</span><span class="p">:</span>
+            
+            <span class="bp">self</span><span class="o">.</span><span class="n">cursor</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">exec_sql</span><span class="p">(</span> <span class="n">sqlString</span><span class="p">,</span> <span class="n">values</span> <span class="p">)</span>
+
+            <span class="n">results</span>      <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cursor</span><span class="o">.</span><span class="n">fetchall</span><span class="p">()</span>
+            
+            <span class="bp">self</span><span class="o">.</span><span class="n">disconnect</span><span class="p">()</span>
+            
+            <span class="k">return</span> <span class="n">results</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s1">&#39;Unable to query: </span><span class="si">{}</span><span class="s1"> </span><span class="se">\n</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)))</span></div>
+
+<div class="viewcode-block" id="PostgresDB.queryIterator"><a class="viewcode-back" href="../../lib.html#lib.dbConnect.PostgresDB.queryIterator">[docs]</a>    <span class="nd">@lD</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">logBase</span> <span class="o">+</span> <span class="s1">&#39;.PostgresDB.queryIterator&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">queryIterator</span><span class="p">(</span><span class="n">logger</span><span class="p">,</span> <span class="bp">self</span><span class="p">,</span> <span class="n">sqlString</span><span class="p">:</span> <span class="nb">str</span><span class="p">,</span> <span class="n">values</span><span class="p">:</span> <span class="n">Optional</span><span class="p">[</span><span class="nb">list</span><span class="p">]</span> <span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">numRows</span><span class="p">:</span> <span class="nb">float</span> <span class="o">=</span><span class="mi">1000</span><span class="p">)</span> <span class="o">-&gt;</span> <span class="nb">list</span><span class="p">:</span>
+        
+        <span class="k">try</span><span class="p">:</span>
+            
+            <span class="bp">self</span><span class="o">.</span><span class="n">cursor</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">exec_sql</span><span class="p">(</span> <span class="n">sqlString</span><span class="p">,</span> <span class="n">values</span> <span class="p">)</span>
+
+            <span class="k">while</span> <span class="kc">True</span><span class="p">:</span>
+
+                <span class="c1">### Escape from database-type error (internet interruption &amp; etc).</span>
+                <span class="k">try</span><span class="p">:</span>
+                    <span class="n">res</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">cursor</span><span class="o">.</span><span class="n">fetchmany</span><span class="p">(</span><span class="nb">int</span><span class="p">(</span><span class="n">numRows</span><span class="p">))</span>
+                <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+                    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;Error: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)))</span>
+                    <span class="k">break</span>
+                
+                <span class="c1">### End of query to be fetched</span>
+                <span class="k">if</span> <span class="nb">len</span><span class="p">(</span><span class="n">res</span><span class="p">)</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
+                    <span class="k">break</span>
+                
+                <span class="k">yield</span> <span class="n">res</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">disconnect</span><span class="p">()</span>
+            
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s1">&#39;Unable to create query iterator: </span><span class="si">{}</span><span class="s1"> </span><span class="se">\n</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">query</span><span class="p">,</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)))</span></div>
+
+<div class="viewcode-block" id="PostgresDB.create_table"><a class="viewcode-back" href="../../lib.html#lib.dbConnect.PostgresDB.create_table">[docs]</a>    <span class="nd">@lD</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">logBase</span> <span class="o">+</span> <span class="s1">&#39;.PostgresDB.create_table&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">create_table</span><span class="p">(</span><span class="n">logger</span><span class="p">,</span> <span class="bp">self</span><span class="p">,</span> <span class="n">tablename</span><span class="p">,</span> <span class="n">colnames</span><span class="p">,</span> <span class="n">coltypes</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Create table in postgres database.</span>
+<span class="sd">        </span>
+<span class="sd">        Drop table if same table name exists in database. </span>
+<span class="sd">        Provided column names and types for created table.</span>
+<span class="sd">        </span>
+<span class="sd">        Decorators:</span>
+<span class="sd">            lD.log</span>
+<span class="sd">        </span>
+<span class="sd">        Arguments:</span>
+<span class="sd">            logger : {logging.Logger} :</span>
+<span class="sd">                the logger function</span>
+<span class="sd">            self : {instance of dbConnect} :</span>
+<span class="sd">                current instance</span>
+<span class="sd">            tablename : {string} :</span>
+<span class="sd">                table name for table to be created. </span>
+<span class="sd">                if table under schema, include schema name in from of table name. (ie. schema.table_name)</span>
+<span class="sd">            colnames : {list of string} :</span>
+<span class="sd">                list of column names for the intended table to be created</span>
+<span class="sd">            coltypes : {list of string} :</span>
+<span class="sd">                list of column types for the intended table to be created</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+
+        <span class="k">try</span><span class="p">:</span>
+        
+            <span class="bp">self</span><span class="o">.</span><span class="n">cursor</span>  <span class="o">=</span> <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">cursor</span><span class="p">()</span>   <span class="c1">## Initialise cursor</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">exec_sql</span><span class="p">(</span><span class="s2">&quot;&quot;&quot;drop table if exists </span><span class="si">{}</span><span class="s2"> &quot;&quot;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">tablename</span><span class="p">))</span>
+
+            <span class="n">tablename_wo_schema</span> <span class="o">=</span> <span class="n">tablename</span><span class="o">.</span><span class="n">split</span><span class="p">(</span><span class="s1">&#39;.&#39;</span><span class="p">)[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">cols_statement</span>      <span class="o">=</span> <span class="s1">&#39;, &#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="s1">&#39;&quot;</span><span class="si">{}</span><span class="s1">&quot; </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">pairs</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">pairs</span><span class="p">[</span><span class="mi">1</span><span class="p">])</span> <span class="k">for</span> <span class="n">pairs</span> <span class="ow">in</span> <span class="nb">zip</span><span class="p">(</span><span class="n">colnames</span><span class="p">,</span> <span class="n">coltypes</span><span class="p">)])</span>
+            <span class="n">sql_string</span>          <span class="o">=</span> <span class="s2">&quot;&quot;&quot;</span>
+<span class="s2">                                  create table </span><span class="si">{tablename}</span><span class="s2">(</span>
+<span class="s2">                                  </span><span class="si">{columns_statement}</span><span class="s2"></span>
+<span class="s2">                                  );</span>
+<span class="s2">            &quot;&quot;&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">tablename</span><span class="o">=</span><span class="n">tablename</span><span class="p">,</span> <span class="n">columns_statement</span><span class="o">=</span><span class="n">cols_statement</span><span class="p">,</span> <span class="n">tablename_wo_schema</span><span class="o">=</span><span class="n">tablename_wo_schema</span><span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">exec_sql</span><span class="p">(</span><span class="n">sql_string</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">commit_sql</span><span class="p">()</span>
+
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;..created table: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">tablename</span><span class="p">))</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s1">&#39;Unable to create table: </span><span class="si">{tablename}</span><span class="s1">: </span><span class="se">\n</span><span class="si">{error}</span><span class="s1">&#39;</span>\
+                            <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">tablename</span>   <span class="o">=</span> <span class="n">tablename</span><span class="p">,</span>
+                                    <span class="n">error</span>       <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)))</span></div>
+
+<div class="viewcode-block" id="PostgresDB.push_df"><a class="viewcode-back" href="../../lib.html#lib.dbConnect.PostgresDB.push_df">[docs]</a>    <span class="nd">@lD</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">logBase</span> <span class="o">+</span> <span class="s1">&#39;.PostgresDB.push_df&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">push_df</span><span class="p">(</span><span class="n">logger</span><span class="p">,</span> <span class="bp">self</span><span class="p">,</span> <span class="n">args</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;helper function for running self.push_df_sequential</span>
+<span class="sd">        </span>
+<span class="sd">            - this function accept args as input</span>
+<span class="sd">            - args = [(index of iteration, data, tablename), ... ]</span>
+<span class="sd">        </span>
+<span class="sd">        Decorators:</span>
+<span class="sd">            lD.log</span>
+<span class="sd">        </span>
+<span class="sd">        Arguments:</span>
+<span class="sd">            logger : {logging.Logger} :</span>
+<span class="sd">                the logger function</span>
+<span class="sd">            args : {tuple} : </span>
+<span class="sd">                in the form of (index of iteration, data, tablename) </span>
+<span class="sd">                for each iteration to push data to database</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+
+        <span class="k">try</span><span class="p">:</span>
+            <span class="n">i</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">tablename</span>  <span class="o">=</span> <span class="n">args</span>
+
+            <span class="n">string_format</span>       <span class="o">=</span> <span class="s2">&quot;(&quot;</span>
+            <span class="n">string_format</span>       <span class="o">=</span> <span class="n">string_format</span> <span class="o">+</span> <span class="s1">&#39;,&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">([</span><span class="s1">&#39;</span><span class="si">%s</span><span class="s1">&#39;</span><span class="p">]</span> <span class="o">*</span> <span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="o">.</span><span class="n">T</span><span class="p">))</span>
+            <span class="n">string_format</span>       <span class="o">=</span> <span class="n">string_format</span> <span class="o">+</span> <span class="s2">&quot;)&quot;</span>
+            
+            <span class="n">ls_mogrify_string</span>   <span class="o">=</span> <span class="p">[]</span>
+            <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">rows</span> <span class="ow">in</span> <span class="n">data</span><span class="o">.</span><span class="n">iterrows</span><span class="p">():</span>
+                <span class="k">try</span><span class="p">:</span> 
+                    <span class="n">ls_mogrify_string</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="bp">self</span><span class="o">.</span><span class="n">cursor</span><span class="o">.</span><span class="n">mogrify</span><span class="p">(</span><span class="n">string_format</span><span class="p">,</span> <span class="nb">tuple</span><span class="p">(</span><span class="n">rows</span><span class="o">.</span><span class="n">values</span><span class="p">)))</span>
+                <span class="k">except</span><span class="p">:</span>
+                    <span class="k">pass</span>
+
+            <span class="n">args_str</span>          <span class="o">=</span> <span class="sa">b</span><span class="s1">&#39;,&#39;</span><span class="o">.</span><span class="n">join</span><span class="p">(</span><span class="n">ls_mogrify_string</span><span class="p">)</span>
+            <span class="n">ls_mogrify_string</span> <span class="o">=</span> <span class="p">[]</span>
+            <span class="n">sql_string</span>        <span class="o">=</span> <span class="s1">&#39;INSERT INTO </span><span class="si">{}</span><span class="s1"> VALUES &#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">tablename</span><span class="p">)</span><span class="o">.</span><span class="n">encode</span><span class="p">()</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">cursor</span><span class="o">.</span><span class="n">execute</span><span class="p">(</span><span class="n">sql_string</span> <span class="o">+</span> <span class="n">args_str</span><span class="p">)</span>
+            <span class="bp">self</span><span class="o">.</span><span class="n">conn</span><span class="o">.</span><span class="n">commit</span><span class="p">()</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s1">&#39;Unable to push one df[index:</span><span class="si">{index}</span><span class="s1">] to table: </span><span class="si">{tablename}</span><span class="s1">: </span><span class="se">\n</span><span class="si">{error}</span><span class="s1">&#39;</span>\
+                            <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">index</span>       <span class="o">=</span> <span class="n">i</span><span class="p">,</span>
+                                    <span class="n">tablename</span>   <span class="o">=</span> <span class="n">tablename</span><span class="p">,</span>
+                                    <span class="n">error</span>       <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)))</span></div>
+
+<div class="viewcode-block" id="PostgresDB.push_df_sequential"><a class="viewcode-back" href="../../lib.html#lib.dbConnect.PostgresDB.push_df_sequential">[docs]</a>    <span class="nd">@lD</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">logBase</span> <span class="o">+</span> <span class="s1">&#39;.PostgresDB.push_df_sequential&#39;</span><span class="p">)</span>
+    <span class="k">def</span> <span class="nf">push_df_sequential</span><span class="p">(</span><span class="n">logger</span><span class="p">,</span> <span class="bp">self</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">tablename</span><span class="p">,</span> <span class="n">colnames</span><span class="p">,</span> <span class="n">coltypes</span><span class="p">,</span> <span class="n">batch_size</span><span class="o">=</span><span class="s1">&#39;all&#39;</span><span class="p">,</span> <span class="n">drop_table_if_exist</span><span class="o">=</span><span class="kc">True</span><span class="p">):</span>
+        <span class="sd">&#39;&#39;&#39;Given pandas.DataFrame, upload data to specified tablename, column names &amp; column types</span>
+<span class="sd">        </span>
+<span class="sd">            - upload data to specified table by batch if batch_size is set to integer value</span>
+<span class="sd">        </span>
+<span class="sd">        Decorators:</span>
+<span class="sd">            lD.log</span>
+<span class="sd">        </span>
+<span class="sd">        Arguments:</span>
+<span class="sd">            logger : {logging.Logger} :</span>
+<span class="sd">                the logger function</span>
+<span class="sd">            self : {instance of dbConnect} :</span>
+<span class="sd">                current instance</span>
+<span class="sd">            data : {pandas.DataFrame} :</span>
+<span class="sd">                structural data in dataframe </span>
+<span class="sd">            tablename : {string} : </span>
+<span class="sd">                name of table in postgres database</span>
+<span class="sd">            colnames : {list of string} : </span>
+<span class="sd">                list of column names present in the database</span>
+<span class="sd">            coltypes : {list of string} : </span>
+<span class="sd">                list of column types required in table</span>
+<span class="sd">        </span>
+<span class="sd">        Keyword Arguments:</span>
+<span class="sd">            batch_size : {int or &#39;all&#39;} : </span>
+<span class="sd">                push all data at once if batch_size set to &#39;all&#39; otherwise based on integer value (default: {&#39;all&#39;})</span>
+<span class="sd">            drop_table_if_exist : {bool, optional} :</span>
+<span class="sd">                drop table if exist in database and recreate with above table attributes (default: {True})</span>
+<span class="sd">        &#39;&#39;&#39;</span>
+
+        <span class="k">try</span><span class="p">:</span>
+
+            <span class="k">if</span> <span class="n">drop_table_if_exist</span><span class="p">:</span>
+                
+                <span class="sd">&#39;&#39;&#39;Create table based on specified tablename and columnnames&#39;&#39;&#39;</span>
+                <span class="bp">self</span><span class="o">.</span><span class="n">create_table</span><span class="p">(</span><span class="n">tablename</span><span class="p">,</span> <span class="n">colnames</span><span class="p">,</span> <span class="n">coltypes</span><span class="p">)</span>
+
+            <span class="k">if</span> <span class="n">batch_size</span> <span class="o">==</span> <span class="s1">&#39;all&#39;</span><span class="p">:</span>   <span class="bp">self</span><span class="o">.</span><span class="n">push_df</span><span class="p">((</span><span class="mi">0</span><span class="p">,</span> <span class="n">data</span><span class="p">,</span> <span class="n">tablename</span><span class="p">))</span>
+            <span class="k">else</span><span class="p">:</span>
+
+                <span class="n">n_chunk</span>      <span class="o">=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">len</span><span class="p">(</span><span class="n">data</span><span class="p">)</span> <span class="o">/</span> <span class="n">batch_size</span><span class="p">)</span> <span class="o">+</span> <span class="mi">1</span>
+                <span class="n">ls_data</span>      <span class="o">=</span> <span class="n">np</span><span class="o">.</span><span class="n">array_split</span><span class="p">(</span><span class="n">data</span><span class="p">,</span> <span class="n">n_chunk</span><span class="p">)</span>
+                <span class="n">ls_tablename</span> <span class="o">=</span> <span class="p">[</span><span class="n">tablename</span><span class="p">]</span> <span class="o">*</span> <span class="n">n_chunk</span>
+                <span class="n">ls_index</span>     <span class="o">=</span> <span class="nb">range</span><span class="p">(</span><span class="n">n_chunk</span><span class="p">)</span>
+
+                <span class="k">del</span> <span class="n">data</span>
+
+                <span class="n">ls_data</span>      <span class="o">=</span> <span class="nb">list</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">ls_index</span><span class="p">,</span> <span class="n">ls_data</span><span class="p">,</span> <span class="n">ls_tablename</span><span class="p">))</span>
+                <span class="n">pbar</span>         <span class="o">=</span> <span class="n">tqdm</span><span class="p">(</span><span class="n">ls_data</span><span class="p">)</span>
+                <span class="n">pbar</span><span class="o">.</span><span class="n">set_description</span><span class="p">(</span><span class="s1">&#39;Uploading data to: </span><span class="si">{}</span><span class="s1">..&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">tablename</span><span class="p">))</span>
+
+                <span class="k">for</span> <span class="n">d_input</span> <span class="ow">in</span> <span class="n">pbar</span><span class="p">:</span>
+                    <span class="bp">self</span><span class="o">.</span><span class="n">push_df</span><span class="p">(</span> <span class="n">d_input</span> <span class="p">)</span>
+
+            <span class="bp">self</span><span class="o">.</span><span class="n">disconnect</span><span class="p">()</span>
+
+            <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;..uploaded data to table: </span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">tablename</span><span class="p">))</span>
+
+        <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+
+            <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s1">&#39;Unable to push df (sequentially) to table: </span><span class="si">{tablename}</span><span class="s1">: </span><span class="se">\n</span><span class="si">{error}</span><span class="s1">&#39;</span>\
+                            <span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">tablename</span>   <span class="o">=</span> <span class="n">tablename</span><span class="p">,</span>
+                                    <span class="n">error</span>       <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)))</span></div></div>
+
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2019, Author
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

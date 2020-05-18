@@ -1,0 +1,407 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>modules.dataProcessing &mdash; src  documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+  <script type="text/javascript" src="../../_static/js/modernizr.min.js"></script>
+  
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script type="text/javascript" src="../../_static/jquery.js"></script>
+        <script type="text/javascript" src="../../_static/underscore.js"></script>
+        <script type="text/javascript" src="../../_static/doctools.js"></script>
+        <script type="text/javascript" src="../../_static/language_data.js"></script>
+    
+    <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+    
+
+  
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> src
+          
+
+          
+          </a>
+
+          
+            
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <p class="caption"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../lib.html">lib package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../logs.html">logs package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../main.html">main module</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../modules.html">modules package</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">src</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../index.html">Module code</a> &raquo;</li>
+        
+      <li>modules.dataProcessing</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <h1>Source code for modules.dataProcessing</h1><div class="highlight"><pre>
+<span></span><span class="kn">from</span> <span class="nn">logs</span> <span class="k">import</span> <span class="n">logDecorator</span> <span class="k">as</span> <span class="n">lD</span> 
+<span class="kn">from</span> <span class="nn">lib.dbConnect</span> <span class="k">import</span> <span class="n">PostgresDB</span>
+
+<span class="kn">import</span> <span class="nn">os</span>
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="kn">import</span> <span class="nn">jsonref</span>
+<span class="kn">from</span> <span class="nn">typing</span> <span class="k">import</span> <span class="n">List</span><span class="p">,</span> <span class="n">Optional</span>
+<span class="kn">import</span> <span class="nn">datetime</span>
+<span class="kn">from</span> <span class="nn">dateutil.relativedelta</span> <span class="k">import</span> <span class="n">relativedelta</span>
+<span class="kn">from</span> <span class="nn">tqdm</span> <span class="k">import</span> <span class="n">tqdm</span>
+<span class="kn">import</span> <span class="nn">itertools</span>
+<span class="kn">import</span> <span class="nn">time</span>
+
+<span class="n">config</span>      <span class="o">=</span> <span class="n">jsonref</span><span class="o">.</span><span class="n">load</span><span class="p">(</span><span class="nb">open</span><span class="p">(</span><span class="s1">&#39;../config/config.json&#39;</span><span class="p">))</span>
+<span class="n">logBase</span>     <span class="o">=</span> <span class="n">config</span><span class="p">[</span><span class="s1">&#39;logging&#39;</span><span class="p">][</span><span class="s1">&#39;logBase&#39;</span><span class="p">]</span> <span class="o">+</span> <span class="s1">&#39;.modules.dataProcessing&#39;</span>
+
+<div class="viewcode-block" id="getJoinedData"><a class="viewcode-back" href="../../modules.html#modules.dataProcessing.getJoinedData">[docs]</a><span class="nd">@lD</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">logBase</span> <span class="o">+</span> <span class="s1">&#39;.getJoinedData&#39;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">getJoinedData</span><span class="p">(</span><span class="n">logger</span><span class="p">,</span> <span class="n">fileDict</span><span class="p">):</span>
+
+    <span class="n">cachedFile</span> <span class="o">=</span> <span class="n">fileDict</span><span class="p">[</span><span class="s1">&#39;rawCombined&#39;</span><span class="p">]</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span> <span class="n">cachedFile</span> <span class="p">):</span>
+
+            <span class="n">sqlString</span> <span class="o">=</span> <span class="s1">&#39;&#39;&#39;</span>
+<span class="s1">                SELECT ca.capturedDate, bu.business_vertical, co.country, ca.region, ca.city_code, ca.strategy_id, ch.channel_name, ca.goal_type, </span>
+<span class="s1">                    ca.total_spend_cpm, ca.impressions, ca.clicks, ca.conversions</span>
+<span class="s1">                FROM </span>
+<span class="s1">                    camp_data_tbl ca</span>
+<span class="s1">                        LEFT JOIN </span>
+<span class="s1">                    business_vertical_tbl bu ON ca.business_vertical_id = bu.business_vertical_id</span>
+<span class="s1">                        LEFT JOIN</span>
+<span class="s1">                    country_tbl co ON ca.country_id = co.country_id</span>
+<span class="s1">                        LEFT JOIN</span>
+<span class="s1">                    channel_name_tbl ch ON ca.channel_name_id = ch.channel_name_id</span>
+<span class="s1">            &#39;&#39;&#39;</span>
+
+            <span class="n">db</span>                   <span class="o">=</span> <span class="n">PostgresDB</span><span class="p">()</span>
+            <span class="n">res</span>                  <span class="o">=</span> <span class="n">db</span><span class="o">.</span><span class="n">query</span><span class="p">(</span> <span class="n">sqlString</span> <span class="p">)</span>
+            <span class="n">data</span>                 <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span> <span class="n">res</span><span class="p">,</span> <span class="n">columns</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;capturedDate&#39;</span><span class="p">,</span> <span class="s1">&#39;business_vertical&#39;</span><span class="p">,</span> <span class="s1">&#39;country&#39;</span><span class="p">,</span> <span class="s1">&#39;region&#39;</span><span class="p">,</span> <span class="s1">&#39;city_code&#39;</span><span class="p">,</span> 
+                                                               <span class="s1">&#39;strategy_id&#39;</span><span class="p">,</span> <span class="s1">&#39;channel_name&#39;</span><span class="p">,</span> <span class="s1">&#39;goal_type&#39;</span><span class="p">,</span> <span class="s1">&#39;total_spend_cpm&#39;</span><span class="p">,</span> <span class="s1">&#39;impressions&#39;</span><span class="p">,</span> 
+                                                               <span class="s1">&#39;clicks&#39;</span><span class="p">,</span> <span class="s1">&#39;conversions&#39;</span><span class="p">]</span> <span class="p">)</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">cachedFile</span><span class="p">)</span> <span class="p">):</span>
+                <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">cachedFile</span><span class="p">)</span> <span class="p">)</span>
+
+            <span class="n">data</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span> <span class="n">cachedFile</span><span class="p">,</span> <span class="n">engine</span><span class="o">=</span><span class="s1">&#39;pyarrow&#39;</span><span class="p">,</span> <span class="n">compression</span><span class="o">=</span><span class="s1">&#39;snappy&#39;</span> <span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">data</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span> <span class="n">path</span><span class="o">=</span><span class="n">cachedFile</span><span class="p">,</span> <span class="n">engine</span><span class="o">=</span><span class="s1">&#39;pyarrow&#39;</span> <span class="p">)</span>
+        
+        <span class="k">return</span> <span class="n">data</span>
+
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s1">&#39;Failed to get joined data </span><span class="se">\n</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)))</span></div>
+
+<div class="viewcode-block" id="getCleanseData_handleNUll"><a class="viewcode-back" href="../../modules.html#modules.dataProcessing.getCleanseData_handleNUll">[docs]</a><span class="nd">@lD</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">logBase</span> <span class="o">+</span> <span class="s1">&#39;.getCleanseData_handleNUll&#39;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">getCleanseData_handleNUll</span><span class="p">(</span><span class="n">logger</span><span class="p">,</span> <span class="n">fileDict</span><span class="p">):</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span> <span class="n">fileDict</span><span class="p">[</span><span class="s1">&#39;cleansed&#39;</span><span class="p">]</span> <span class="p">):</span>
+
+            <span class="n">jumboData</span>                 <span class="o">=</span> <span class="n">getJoinedData</span><span class="p">(</span> <span class="n">fileDict</span> <span class="p">)</span>
+
+            <span class="c1">## Assuming the null values under goal_type column as 3rd goal type, </span>
+            <span class="c1">## which is different from goal type 1 &amp; 2. Hence, to fill null goal_type as 3.</span>
+            <span class="n">jumboData</span><span class="p">[</span><span class="s1">&#39;goal_type&#39;</span><span class="p">]</span>    <span class="o">=</span> <span class="n">jumboData</span><span class="p">[</span><span class="s1">&#39;goal_type&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">3</span><span class="p">)</span>
+            <span class="n">jumboData</span><span class="p">[</span><span class="s1">&#39;goal_type&#39;</span><span class="p">]</span>    <span class="o">=</span> <span class="n">jumboData</span><span class="p">[</span><span class="s1">&#39;goal_type&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">astype</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">int</span><span class="p">)</span>
+
+            <span class="c1">## Assuming the null values under conversions column as &quot;converted&quot;</span>
+            <span class="n">jumboData</span><span class="p">[</span><span class="s1">&#39;conversions&#39;</span><span class="p">]</span>  <span class="o">=</span> <span class="n">jumboData</span><span class="p">[</span><span class="s1">&#39;conversions&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span>
+
+            <span class="c1">## Assuming the null values under impressions column follows the median of impressions by country and region</span>
+            <span class="n">impressionMapping</span>         <span class="o">=</span> <span class="n">jumboData</span><span class="p">[</span> <span class="n">jumboData</span><span class="p">[</span><span class="s1">&#39;impressions&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">notnull</span><span class="p">()</span> <span class="p">]</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s1">&#39;country&#39;</span><span class="p">,</span> <span class="s1">&#39;region&#39;</span><span class="p">])[</span><span class="s1">&#39;impressions&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">agg</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">)</span>
+            <span class="n">impressionMapping</span>         <span class="o">=</span> <span class="n">impressionMapping</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+            <span class="n">impressionMapping</span><span class="o">.</span><span class="n">columns</span> <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;country&#39;</span><span class="p">,</span> <span class="s1">&#39;region&#39;</span><span class="p">,</span> <span class="s1">&#39;median_impressions&#39;</span><span class="p">]</span>
+            <span class="n">jumboData</span>                 <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">jumboData</span><span class="p">,</span> <span class="n">impressionMapping</span><span class="p">,</span> <span class="n">on</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;country&#39;</span><span class="p">,</span> <span class="s1">&#39;region&#39;</span><span class="p">],</span> <span class="n">how</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">)</span>
+            <span class="n">jumboData</span><span class="p">[</span><span class="s1">&#39;impressions&#39;</span><span class="p">]</span>  <span class="o">=</span> <span class="n">jumboData</span><span class="p">[</span><span class="s1">&#39;impressions&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span> <span class="n">jumboData</span><span class="p">[</span><span class="s1">&#39;median_impressions&#39;</span><span class="p">]</span> <span class="p">)</span>
+
+            <span class="c1">## Assuming the null values under clicks column follows the median of clicks by country and region</span>
+            <span class="n">clicksMapping</span>             <span class="o">=</span> <span class="n">jumboData</span><span class="p">[</span> <span class="n">jumboData</span><span class="p">[</span><span class="s1">&#39;clicks&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">notnull</span><span class="p">()</span> <span class="p">]</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s1">&#39;country&#39;</span><span class="p">,</span> <span class="s1">&#39;region&#39;</span><span class="p">])[</span><span class="s1">&#39;clicks&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">agg</span><span class="p">(</span><span class="n">np</span><span class="o">.</span><span class="n">median</span><span class="p">)</span>
+            <span class="n">clicksMapping</span>             <span class="o">=</span> <span class="n">clicksMapping</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+            <span class="n">clicksMapping</span><span class="o">.</span><span class="n">columns</span>     <span class="o">=</span> <span class="p">[</span><span class="s1">&#39;country&#39;</span><span class="p">,</span> <span class="s1">&#39;region&#39;</span><span class="p">,</span> <span class="s1">&#39;median_clicks&#39;</span><span class="p">]</span>
+            <span class="n">jumboData</span>                 <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">merge</span><span class="p">(</span><span class="n">jumboData</span><span class="p">,</span> <span class="n">clicksMapping</span><span class="p">,</span> <span class="n">on</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;country&#39;</span><span class="p">,</span> <span class="s1">&#39;region&#39;</span><span class="p">],</span> <span class="n">how</span><span class="o">=</span><span class="s1">&#39;left&#39;</span><span class="p">)</span>
+            <span class="n">jumboData</span><span class="p">[</span><span class="s1">&#39;clicks&#39;</span><span class="p">]</span>       <span class="o">=</span> <span class="n">jumboData</span><span class="p">[</span><span class="s1">&#39;clicks&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">fillna</span><span class="p">(</span> <span class="n">jumboData</span><span class="p">[</span><span class="s1">&#39;median_clicks&#39;</span><span class="p">]</span> <span class="p">)</span>
+
+            <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">fileDict</span><span class="p">[</span><span class="s1">&#39;cleansed&#39;</span><span class="p">])</span> <span class="p">):</span>
+                <span class="n">os</span><span class="o">.</span><span class="n">makedirs</span><span class="p">(</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">dirname</span><span class="p">(</span><span class="n">fileDict</span><span class="p">[</span><span class="s1">&#39;cleansed&#39;</span><span class="p">])</span> <span class="p">)</span>
+
+            <span class="n">jumboData</span><span class="o">.</span><span class="n">to_parquet</span><span class="p">(</span> <span class="n">fileDict</span><span class="p">[</span><span class="s1">&#39;cleansed&#39;</span><span class="p">],</span> <span class="n">engine</span><span class="o">=</span><span class="s1">&#39;pyarrow&#39;</span><span class="p">,</span> <span class="n">compression</span><span class="o">=</span><span class="s1">&#39;snappy&#39;</span> <span class="p">)</span>
+
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">jumboData</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span> <span class="n">path</span><span class="o">=</span><span class="n">fileDict</span><span class="p">[</span><span class="s1">&#39;cleansed&#39;</span><span class="p">],</span> <span class="n">engine</span><span class="o">=</span><span class="s1">&#39;pyarrow&#39;</span> <span class="p">)</span>
+        
+        <span class="k">return</span> <span class="n">jumboData</span>
+
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s1">&#39;Unable to clean data </span><span class="se">\n</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)))</span></div>
+
+<div class="viewcode-block" id="generateETLResults"><a class="viewcode-back" href="../../modules.html#modules.dataProcessing.generateETLResults">[docs]</a><span class="nd">@lD</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">logBase</span> <span class="o">+</span> <span class="s1">&#39;.generateETLResults&#39;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">generateETLResults</span><span class="p">(</span><span class="n">logger</span><span class="p">,</span> <span class="n">fileDict</span><span class="p">):</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">jumboData</span>       <span class="o">=</span> <span class="n">getCleanseData_handleNUll</span><span class="p">(</span> <span class="n">fileDict</span> <span class="p">)</span>
+
+        <span class="c1">### Generate total impressions, total clicks, and total conversions by country</span>
+        <span class="n">aggByCountry</span>    <span class="o">=</span> <span class="n">jumboData</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s1">&#39;country&#39;</span><span class="p">])[[</span><span class="s1">&#39;impressions&#39;</span><span class="p">,</span> <span class="s1">&#39;clicks&#39;</span><span class="p">,</span> <span class="s1">&#39;conversions&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">agg</span><span class="p">(</span><span class="nb">sum</span><span class="p">)</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+        
+        <span class="c1">### Insert the dataset into a database using batch insertion</span>
+        <span class="n">db</span>              <span class="o">=</span> <span class="n">PostgresDB</span><span class="p">()</span>
+        <span class="n">db</span><span class="o">.</span><span class="n">push_df_sequential</span><span class="p">(</span> <span class="n">aggByCountry</span><span class="p">,</span> <span class="n">tablename</span><span class="o">=</span><span class="s1">&#39;public.aggByCountry&#39;</span><span class="p">,</span> 
+                               <span class="n">colnames</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;country&#39;</span><span class="p">,</span> <span class="s1">&#39;impressions&#39;</span><span class="p">,</span> <span class="s1">&#39;clicks&#39;</span><span class="p">,</span> <span class="s1">&#39;conversions&#39;</span><span class="p">],</span> 
+                               <span class="n">coltypes</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;text&#39;</span><span class="p">,</span> <span class="s1">&#39;double precision&#39;</span><span class="p">,</span> <span class="s1">&#39;double precision&#39;</span><span class="p">,</span> <span class="s1">&#39;double precision&#39;</span><span class="p">],</span> 
+                               <span class="n">batch_size</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">drop_table_if_exist</span><span class="o">=</span><span class="kc">True</span> <span class="p">)</span>
+        <span class="n">aggByCountry</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="s1">&#39;../results/aggByCountry.csv&#39;</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span> 
+
+        <span class="c1">### Generate total impressions, total clicks, and total conversions by channel_name</span>
+        <span class="n">aggByChannel</span>    <span class="o">=</span> <span class="n">jumboData</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s1">&#39;channel_name&#39;</span><span class="p">])[[</span><span class="s1">&#39;impressions&#39;</span><span class="p">,</span> <span class="s1">&#39;clicks&#39;</span><span class="p">,</span> <span class="s1">&#39;conversions&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">agg</span><span class="p">(</span><span class="nb">sum</span><span class="p">)</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+
+        <span class="c1">### Insert the dataset into a database using batch insertion</span>
+        <span class="n">db</span>              <span class="o">=</span> <span class="n">PostgresDB</span><span class="p">()</span>
+        <span class="n">db</span><span class="o">.</span><span class="n">push_df_sequential</span><span class="p">(</span> <span class="n">aggByChannel</span><span class="p">,</span> <span class="n">tablename</span><span class="o">=</span><span class="s1">&#39;public.aggByChannel&#39;</span><span class="p">,</span> 
+                               <span class="n">colnames</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;channel_name&#39;</span><span class="p">,</span> <span class="s1">&#39;impressions&#39;</span><span class="p">,</span> <span class="s1">&#39;clicks&#39;</span><span class="p">,</span> <span class="s1">&#39;conversions&#39;</span><span class="p">],</span> 
+                               <span class="n">coltypes</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;text&#39;</span><span class="p">,</span> <span class="s1">&#39;double precision&#39;</span><span class="p">,</span> <span class="s1">&#39;double precision&#39;</span><span class="p">,</span> <span class="s1">&#39;double precision&#39;</span><span class="p">],</span> 
+                               <span class="n">batch_size</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">drop_table_if_exist</span><span class="o">=</span><span class="kc">True</span> <span class="p">)</span>
+        <span class="n">aggByChannel</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="s1">&#39;../results/aggByChannel.csv&#39;</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>  
+
+        <span class="c1">### Generate total impressions, total clicks, and total conversions by business_vertical</span>
+        <span class="n">aggByBusinessVertical</span> <span class="o">=</span> <span class="n">jumboData</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s1">&#39;business_vertical&#39;</span><span class="p">])[[</span><span class="s1">&#39;impressions&#39;</span><span class="p">,</span> <span class="s1">&#39;clicks&#39;</span><span class="p">,</span> <span class="s1">&#39;conversions&#39;</span><span class="p">]]</span><span class="o">.</span><span class="n">agg</span><span class="p">(</span><span class="nb">sum</span><span class="p">)</span><span class="o">.</span><span class="n">reset_index</span><span class="p">()</span>
+
+        <span class="c1">### Insert the dataset into a database using batch insertion</span>
+        <span class="n">db</span>                    <span class="o">=</span> <span class="n">PostgresDB</span><span class="p">()</span>
+        <span class="n">db</span><span class="o">.</span><span class="n">push_df_sequential</span><span class="p">(</span> <span class="n">aggByBusinessVertical</span><span class="p">,</span> <span class="n">tablename</span><span class="o">=</span><span class="s1">&#39;public.aggByBusinessVertical&#39;</span><span class="p">,</span> 
+                               <span class="n">colnames</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;business_vertical&#39;</span><span class="p">,</span> <span class="s1">&#39;impressions&#39;</span><span class="p">,</span> <span class="s1">&#39;clicks&#39;</span><span class="p">,</span> <span class="s1">&#39;conversions&#39;</span><span class="p">],</span> 
+                               <span class="n">coltypes</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;text&#39;</span><span class="p">,</span> <span class="s1">&#39;double precision&#39;</span><span class="p">,</span> <span class="s1">&#39;double precision&#39;</span><span class="p">,</span> <span class="s1">&#39;double precision&#39;</span><span class="p">],</span> 
+                               <span class="n">batch_size</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">drop_table_if_exist</span><span class="o">=</span><span class="kc">True</span> <span class="p">)</span>
+        <span class="n">aggByBusinessVertical</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="s1">&#39;../results/aggByBusinessVertical.csv&#39;</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>   
+
+        <span class="c1">### Select strategy_id =3718750. </span>
+        <span class="c1">### Show the cumulative sum of impressions and clicks partitioned by channel_name and region over date in ascending order</span>
+        <span class="n">specificStrategy</span> <span class="o">=</span> <span class="n">jumboData</span><span class="p">[</span> <span class="n">jumboData</span><span class="p">[</span><span class="s1">&#39;strategy_id&#39;</span><span class="p">]</span> <span class="o">==</span> <span class="mi">3718750</span> <span class="p">]</span> 
+        <span class="n">cumulativeSumDF</span>  <span class="o">=</span> <span class="p">[]</span>
+        <span class="k">for</span> <span class="n">index</span><span class="p">,</span> <span class="n">df</span> <span class="ow">in</span> <span class="n">specificStrategy</span><span class="o">.</span><span class="n">groupby</span><span class="p">([</span><span class="s1">&#39;channel_name&#39;</span><span class="p">,</span> <span class="s1">&#39;region&#39;</span><span class="p">]):</span>
+            <span class="n">df_sorted</span>                      <span class="o">=</span> <span class="n">df</span><span class="o">.</span><span class="n">sort_values</span><span class="p">(</span><span class="s1">&#39;capturedDate&#39;</span><span class="p">)</span><span class="o">.</span><span class="n">reset_index</span><span class="p">(</span><span class="n">drop</span><span class="o">=</span><span class="kc">True</span><span class="p">)[[</span><span class="s1">&#39;capturedDate&#39;</span><span class="p">,</span> <span class="s1">&#39;impressions&#39;</span><span class="p">,</span> <span class="s1">&#39;clicks&#39;</span><span class="p">]]</span>
+            <span class="n">df_sorted</span><span class="p">[</span><span class="s1">&#39;impressions_cumul&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">df_sorted</span><span class="p">[</span><span class="s1">&#39;impressions&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">cumsum</span><span class="p">()</span>
+            <span class="n">df_sorted</span><span class="p">[</span><span class="s1">&#39;clicks_cumul&#39;</span><span class="p">]</span>      <span class="o">=</span> <span class="n">df_sorted</span><span class="p">[</span><span class="s1">&#39;clicks&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">cumsum</span><span class="p">()</span>
+            <span class="n">df_sorted</span><span class="p">[</span><span class="s1">&#39;channel_name&#39;</span><span class="p">]</span>      <span class="o">=</span> <span class="n">index</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span>
+            <span class="n">df_sorted</span><span class="p">[</span><span class="s1">&#39;region&#39;</span><span class="p">]</span>            <span class="o">=</span> <span class="n">index</span><span class="p">[</span><span class="mi">1</span><span class="p">]</span>
+            <span class="n">cumulativeSumDF</span><span class="o">.</span><span class="n">append</span><span class="p">(</span> <span class="n">df_sorted</span> <span class="p">)</span>
+
+        <span class="n">cumulativeSumDF</span>  <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">concat</span><span class="p">(</span> <span class="n">cumulativeSumDF</span> <span class="p">)</span>
+        <span class="n">db</span>               <span class="o">=</span> <span class="n">PostgresDB</span><span class="p">()</span>
+
+        <span class="c1">### Insert the dataset into a database using batch insertion</span>
+        <span class="n">db</span><span class="o">.</span><span class="n">push_df_sequential</span><span class="p">(</span> <span class="n">cumulativeSumDF</span><span class="p">,</span> <span class="n">tablename</span><span class="o">=</span><span class="s1">&#39;public.cumulativeSumDF_strat_3718750&#39;</span><span class="p">,</span> 
+                               <span class="n">colnames</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;capturedDate&#39;</span><span class="p">,</span> <span class="s1">&#39;impressions&#39;</span><span class="p">,</span> <span class="s1">&#39;clicks&#39;</span><span class="p">,</span> <span class="s1">&#39;impressions_cumul&#39;</span><span class="p">,</span> <span class="s1">&#39;clicks_cumul&#39;</span><span class="p">,</span> <span class="s1">&#39;channel_name&#39;</span><span class="p">,</span> <span class="s1">&#39;region&#39;</span><span class="p">],</span> 
+                               <span class="n">coltypes</span><span class="o">=</span><span class="p">[</span><span class="s1">&#39;date&#39;</span><span class="p">,</span> <span class="s1">&#39;double precision&#39;</span><span class="p">,</span> <span class="s1">&#39;double precision&#39;</span><span class="p">,</span> <span class="s1">&#39;double precision&#39;</span><span class="p">,</span> <span class="s1">&#39;double precision&#39;</span><span class="p">,</span> <span class="s1">&#39;text&#39;</span><span class="p">,</span> <span class="s1">&#39;text&#39;</span><span class="p">],</span> 
+                               <span class="n">batch_size</span><span class="o">=</span><span class="mi">100</span><span class="p">,</span> <span class="n">drop_table_if_exist</span><span class="o">=</span><span class="kc">True</span> <span class="p">)</span>
+        <span class="n">cumulativeSumDF</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="s1">&#39;../results/cumulativeSumDF_strat_3718750.csv&#39;</span><span class="p">,</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span><span class="p">)</span>   
+
+        <span class="n">results</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;aggByCountry&#39;</span>          <span class="p">:</span> <span class="n">aggByCountry</span><span class="p">,</span>
+            <span class="s1">&#39;aggByChannel&#39;</span>          <span class="p">:</span> <span class="n">aggByChannel</span><span class="p">,</span>
+            <span class="s1">&#39;aggByBusinessVertical&#39;</span> <span class="p">:</span> <span class="n">aggByBusinessVertical</span><span class="p">,</span>
+            <span class="s1">&#39;cumulativeSumDF&#39;</span>       <span class="p">:</span> <span class="n">cumulativeSumDF</span>
+        <span class="p">}</span>
+
+        <span class="k">return</span> <span class="n">results</span>
+
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s1">&#39;Unable to generate ETL results </span><span class="se">\n</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)))</span></div>
+
+<div class="viewcode-block" id="getCreatedFeatures"><a class="viewcode-back" href="../../modules.html#modules.dataProcessing.getCreatedFeatures">[docs]</a><span class="nd">@lD</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">logBase</span> <span class="o">+</span> <span class="s1">&#39;.getCreatedFeatures&#39;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">getCreatedFeatures</span><span class="p">(</span><span class="n">logger</span><span class="p">,</span> <span class="n">fileDict</span><span class="p">):</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="k">if</span> <span class="ow">not</span> <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">exists</span><span class="p">(</span> <span class="n">fileDict</span><span class="p">[</span><span class="s1">&#39;engineered&#39;</span><span class="p">]</span> <span class="p">):</span>
+            
+            <span class="n">jumboData_clean</span>                   <span class="o">=</span> <span class="n">getCleanseData_handleNUll</span><span class="p">(</span><span class="n">fileDict</span><span class="p">)</span>
+
+            <span class="n">jumboData_clean</span><span class="p">[</span><span class="s1">&#39;yearCaptured&#39;</span><span class="p">]</span>   <span class="o">=</span> <span class="n">jumboData_clean</span><span class="p">[</span><span class="s1">&#39;capturedDate&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">dt</span><span class="p">:</span> <span class="n">dt</span><span class="o">.</span><span class="n">year</span><span class="p">)</span>
+            <span class="n">jumboData_clean</span><span class="p">[</span><span class="s1">&#39;YYYYMMCaptured&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">jumboData_clean</span><span class="p">[</span><span class="s1">&#39;capturedDate&#39;</span><span class="p">]</span><span class="o">.</span><span class="n">apply</span><span class="p">(</span><span class="k">lambda</span> <span class="n">dt</span><span class="p">:</span> <span class="s1">&#39;</span><span class="si">{}{:02d}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">dt</span><span class="o">.</span><span class="n">year</span><span class="p">,</span> <span class="n">dt</span><span class="o">.</span><span class="n">month</span><span class="p">))</span>
+
+            <span class="n">jumboData_clean</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span> <span class="n">fileDict</span><span class="p">[</span><span class="s1">&#39;engineered&#39;</span><span class="p">],</span> <span class="n">index</span><span class="o">=</span><span class="kc">False</span> <span class="p">)</span>
+        
+        <span class="k">else</span><span class="p">:</span>
+            <span class="n">jumboData_clean</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_parquet</span><span class="p">(</span> <span class="n">path</span><span class="o">=</span><span class="n">fileDict</span><span class="p">[</span><span class="s1">&#39;engineered&#39;</span><span class="p">],</span> <span class="n">engine</span><span class="o">=</span><span class="s1">&#39;pyarrow&#39;</span> <span class="p">)</span>
+
+        <span class="k">return</span> <span class="n">jumboData_clean</span>
+
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s1">&#39;Unable to create features </span><span class="se">\n</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)))</span></div>
+
+<div class="viewcode-block" id="main"><a class="viewcode-back" href="../../modules.html#modules.dataProcessing.main">[docs]</a><span class="nd">@lD</span><span class="o">.</span><span class="n">log</span><span class="p">(</span><span class="n">logBase</span> <span class="o">+</span> <span class="s1">&#39;.main&#39;</span><span class="p">)</span>
+<span class="k">def</span> <span class="nf">main</span><span class="p">(</span><span class="n">logger</span><span class="p">,</span> <span class="n">resultsDict</span><span class="p">):</span>
+
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">fileDict</span> <span class="o">=</span> <span class="p">{</span>
+            <span class="s1">&#39;rawCombined&#39;</span> <span class="p">:</span> <span class="s1">&#39;../data/intermediate/jumboData.snappy.parquet&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;cleansed&#39;</span>    <span class="p">:</span> <span class="s1">&#39;../data/intermediate/jumboData_cleansed.snappy.parquet&#39;</span><span class="p">,</span>
+            <span class="s1">&#39;engineered&#39;</span>  <span class="p">:</span> <span class="s1">&#39;../data/intermediate/jumboData_cleansed_engineered.snappy.parquet&#39;</span>
+        <span class="p">}</span>
+        <span class="n">jumboData</span>            <span class="o">=</span> <span class="n">getJoinedData</span><span class="p">(</span> <span class="n">fileDict</span> <span class="p">)</span>
+        <span class="n">jumboData_clean</span>      <span class="o">=</span> <span class="n">getCleanseData_handleNUll</span><span class="p">(</span> <span class="n">fileDict</span> <span class="p">)</span>
+        
+        <span class="n">generateETLResults</span><span class="p">(</span><span class="n">fileDict</span><span class="p">)</span>
+        <span class="n">jumboData_engineered</span> <span class="o">=</span> <span class="n">getCreatedFeatures</span><span class="p">(</span> <span class="n">fileDict</span> <span class="p">)</span>
+
+    <span class="k">except</span> <span class="ne">Exception</span> <span class="k">as</span> <span class="n">e</span><span class="p">:</span>
+        <span class="n">logger</span><span class="o">.</span><span class="n">error</span><span class="p">(</span><span class="s1">&#39;Unable to run main </span><span class="se">\n</span><span class="si">{}</span><span class="s1">&#39;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="nb">str</span><span class="p">(</span><span class="n">e</span><span class="p">)))</span></div>
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+
+    <span class="k">pass</span>
+    <span class="c1"># jumboData = getJoinedData( cachedFile=&#39;../data/intermediate/jumboData_cleansed_engineered.snappy.parquet&#39; )</span>
+</pre></div>
+
+           </div>
+           
+          </div>
+          <footer>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2019, Author
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script>
+
+  
+  
+    
+   
+
+</body>
+</html>

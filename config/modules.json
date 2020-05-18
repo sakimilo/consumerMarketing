@@ -1,0 +1,16 @@
+[
+    {
+        "moduleName" : "warmStart",
+        "path"       : "modules/warmStart.py",
+        "execute"    : false,
+        "description": "",
+        "owner"      : ""
+    },
+    {
+        "moduleName" : "dataProcessing",
+        "path"       : "modules/dataProcessing.py",
+        "execute"    : true,
+        "description": "",
+        "owner"      : ""
+    }
+]
