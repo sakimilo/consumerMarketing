@@ -1,6 +1,6 @@
-# Assessment
+# Consumer Marketing
 
-This the repository that host the program for generating analytical insights, including visualisation on the data located under `data` folder.
+This is the repository that host the program for generating analytical insights, including visualisation on the data located under `data` folder.
 
 ## Getting Started
 
